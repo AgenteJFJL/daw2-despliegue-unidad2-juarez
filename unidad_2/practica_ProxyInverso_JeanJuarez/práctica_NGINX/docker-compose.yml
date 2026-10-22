@@ -1,0 +1,30 @@
+services:
+  flask:
+    build: ./app
+    container_name: flask
+    environment:
+      - DEPLOY_DATE=${DEPLOY_DATE}
+    expose:
+      - "5000"          # solo visible dentro de la red Docker
+    networks:
+      - red_privada
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:stable
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - flask
+    networks:
+      - red_privada
+    restart: unless-stopped
+
+networks:
+  red_privada:
+    driver: bridge

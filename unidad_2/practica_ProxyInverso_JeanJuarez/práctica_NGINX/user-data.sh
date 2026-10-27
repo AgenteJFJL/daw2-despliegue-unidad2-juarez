@@ -54,7 +54,7 @@ def index():
       <head><title>UT2-RA2</title></head>
       <body style="font-family: sans-serif; text-align: center; margin-top: 10%;">
         <h1>Despliegue Nginx + Flask + SSL</h1>
-        <p><b>Alumno:</b> TU NOMBRE Y APELLIDOS</p>
+        <p><b>Alumno:</b> Jean Franco Juarez Lozano</p>
         <p><b>Centro-Ciclo-Grupo:</b> Pío Baroja - DAW - TU GRUPO</p>
         <p><b>Fecha de despliegue:</b> {fecha}</p>
       </body>

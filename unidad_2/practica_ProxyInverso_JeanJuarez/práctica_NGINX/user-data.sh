@@ -55,7 +55,11 @@ def index():
       <body style="font-family: sans-serif; text-align: center; margin-top: 10%;">
         <h1>Despliegue Nginx + Flask + SSL</h1>
         <p><b>Alumno:</b> Jean Franco Juarez Lozano</p>
+<<<<<<< HEAD
         <p><b>Centro-Ciclo-Grupo:</b> Pío Baroja - DAW</p>
+=======
+        <p><b>Centro-Ciclo-Grupo:</b> Pío Baroja - DAW - TU GRUPO</p>
+>>>>>>> 7260d2f2f23a3aebe90e7a792af4ce64fca97eb0
         <p><b>Fecha de despliegue:</b> {fecha}</p>
       </body>
     </html>

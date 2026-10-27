@@ -12,7 +12,7 @@ def index():
       <body style="font-family: sans-serif; text-align: center; margin-top: 10%;">
         <h1>Despliegue Nginx + Flask + SSL</h1>
         <p><b>Alumno:</b> Jean FRanco Juarez Lozano</p>
-        <p><b>Centro-Ciclo-Grupo:</b> Pío Baroja - DAW - TU GRUPO</p>
+        <p><b>Centro-Ciclo-Grupo:</b> Pío Baroja - DAW </p>
         <p><b>Fecha de despliegue:</b> {fecha}</p>
       </body>
     </html>

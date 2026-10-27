@@ -5,7 +5,7 @@ services:
     environment:
       - DEPLOY_DATE=${DEPLOY_DATE}
     expose:
-      - "5000"          # solo visible dentro de la red Docker
+      - "5000"          
     networks:
       - red_privada
     restart: unless-stopped

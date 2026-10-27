@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía de estudio: Despliegue de Aplicaciones Web (UT2-RA2)</title>
+<style>
+:root{--bg:#f7f8f6;--fg:#1c2421;--mut:#5b6761;--card:#fff;--line:#d9dfdb;--ac:#0e6b5c;--ok:#1b7f3b;--ko:#b3261e;--code:#eef2ef}
+@media (prefers-color-scheme:dark){:root{--bg:#121816;--fg:#e6ece8;--mut:#9aa8a1;--card:#1a2220;--line:#2d3a36;--ac:#4fc3ad;--ok:#5fd17f;--ko:#ff8a80;--code:#222d2a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 Georgia,"Times New Roman",serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 80px}
+h1{font-size:2rem;line-height:1.2;margin:.5em 0 .2em}
+h2{font-size:1.5rem;margin:2.2em 0 .5em;border-bottom:2px solid var(--ac);padding-bottom:.2em}
+h3{font-size:1.1rem;margin:1.4em 0 .3em;color:var(--ac)}
+p,li{max-width:70ch}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+nav a{padding:6px 12px;border:1px solid var(--line);border-radius:6px;color:var(--fg);text-decoration:none;font:600 .85rem system-ui,sans-serif;background:var(--card)}
+nav a:focus-visible,button:focus-visible,input:focus-visible+span{outline:3px solid var(--ac);outline-offset:2px}
+code,pre{font:.88rem/1.5 ui-monospace,Consolas,monospace;background:var(--code);border-radius:4px}
+code{padding:1px 5px}pre{padding:10px 12px;overflow-x:auto}
+.box{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:6px;padding:10px 14px;margin:12px 0}
+.tip{border-left-color:#c58b00}
+.tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font:.9rem system-ui,sans-serif}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}th{background:var(--code)}
+.q{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:12px 0}
+.q p{margin:0 0 6px;font-weight:700}
+.q label{display:block;padding:4px 6px;border-radius:4px;cursor:pointer;font:.95rem system-ui,sans-serif}
+.q label.ok{background:color-mix(in srgb,var(--ok) 22%,transparent)}
+.q label.ko{background:color-mix(in srgb,var(--ko) 22%,transparent)}
+button{font:700 1rem system-ui,sans-serif;background:var(--ac);color:var(--bg);border:0;border-radius:6px;padding:10px 20px;cursor:pointer}
+#res{font:700 1.2rem system-ui,sans-serif;margin:14px 0}
+.sol li{margin:6px 0}.sol b{color:var(--ac)}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style></head><body><main>
+<h1>Despliegue de Aplicaciones Web: guía de estudio</h1>
+<p>UT2-RA2 · Servidores web, hardening, HTTPS y monitorización. Resumen explicado para principiantes, test de 40 preguntas y soluciones al final.</p>
+<nav><a href="#t1">1. Apache y módulos</a><a href="#t2">2. Hardening y acceso</a><a href="#t3">3. HTTPS y certificados</a><a href="#t4">4. Docker y AWS</a><a href="#t5">5. Logs, GoAccess, Fail2ban</a><a href="#t6">6. Proxy Nginx (entrega)</a><a href="#test">Test 1</a><a href="#test2">Test 2</a><a href="#sol">Soluciones</a></nav>
+
+<h2 id="t1">1. Apache, MPM y módulos</h2>
+<p>Un <b>servidor web</b> recibe peticiones HTTP y devuelve páginas. Apache es el más usado en el curso. Piensa en él como un camarero: los <b>MPM</b> son la forma en que se organiza para atender mesas.</p>
+<div class="tbl"><table><tr><th>MPM</th><th>Cómo funciona</th><th>Para recordar</th></tr>
+<tr><td>Prefork</td><td>1 proceso por petición, sin hilos</td><td>Estable, compatible con PHP clásico (no thread-safe), gasta más RAM</td></tr>
+<tr><td>Worker</td><td>Procesos con varios hilos</td><td>Más clientes con menos memoria</td></tr>
+<tr><td>Event</td><td>Como Worker, pero con un hilo para conexiones Keep-Alive inactivas</td><td>El recomendado hoy</td></tr></table></div>
+<h3>Directivas de rendimiento</h3>
+<ul><li><code>Timeout 60</code>: segundos máximos esperando una petición o respuesta.</li><li><code>KeepAlive On</code>: reutiliza la conexión para varias peticiones.</li><li><code>MaxKeepAliveRequests 100</code>: peticiones máximas por conexión.</li><li><code>KeepAliveTimeout 5</code>: segundos de espera de una nueva petición antes de cerrar.</li></ul>
+<h3>Módulos: <code>a2enmod</code> / <code>a2dismod</code></h3>
+<p>Activan o desactivan módulos creando o quitando enlaces simbólicos entre <code>mods-available</code> y <code>mods-enabled</code> (en <code>/etc/apache2/</code>). Después hay que reiniciar o recargar Apache.</p>
+<div class="tbl"><table><tr><th>Módulo</th><th>Para qué</th></tr>
+<tr><td>mod_rewrite</td><td>Reescribe URLs con expresiones regulares: URLs amigables, redirecciones, forzar HTTPS</td></tr>
+<tr><td>mod_headers</td><td>Añade cabeceras de seguridad (HSTS, CSP, X-Frame-Options)</td></tr>
+<tr><td>mod_deflate</td><td>Comprime HTML/CSS/JS/JSON con Gzip (ahorra hasta ~70% de ancho de banda)</td></tr>
+<tr><td>mod_proxy / proxy_http</td><td>Proxy inverso hacia Node, Tomcat, Flask, Docker</td></tr>
+<tr><td>mod_security</td><td>WAF: detecta inyección SQL, XSS, Path Traversal</td></tr>
+<tr><td>mod_ssl</td><td>Habilita HTTPS</td></tr></table></div>
+<h3>VirtualHost</h3>
+<p>Permite alojar varios sitios en la misma IP y puerto, distinguidos por el nombre (<code>ServerName</code>). Piezas clave: <code>ServerName</code>, <code>ServerAlias</code>, <code>DocumentRoot</code> (carpeta del sitio), <code>ErrorLog</code>, <code>CustomLog ... combined</code>. Se crea en <code>sites-available</code> y se activa con <code>a2ensite</code>. Para pruebas locales se añade el nombre en <code>/etc/hosts</code> (<code>127.0.0.1 seguro.empresa.local</code>).</p>
+<div class="box tip"><b>Orden de procesado de directivas:</b> <code>&lt;Directory&gt;</code> (de ruta más corta a más larga) → <code>&lt;Location&gt;</code> → <code>.htaccess</code> (solo si <code>AllowOverride</code> lo permite; se lee en cada petición).</div>
+<p>Comandos útiles: <code>apache2ctl configtest</code> (valida sintaxis antes de recargar), <code>systemctl reload|restart|status apache2</code>.</p>
+
+<h2 id="t2">2. Autenticación, control de acceso y hardening</h2>
+<h3>Control por IP (Apache 2.4)</h3>
+<pre>Require ip 192.168.1.0/24
+Require ip 10.0.0.15
+&lt;FilesMatch "^\.(ht|git|env)"&gt; Require all denied &lt;/FilesMatch&gt;</pre>
+<h3>Autenticación HTTP Basic</h3>
+<ol><li>Crear usuario: <code>sudo htpasswd -c /etc/apache2/.htpasswd usuario</code> (<code>-c</code> crea el fichero; sin él se añaden usuarios).</li><li>Proteger la carpeta (en el VirtualHost o en <code>.htaccess</code>):<pre>AuthType Basic
+AuthName "Zona restringida"
+AuthUserFile /etc/apache2/.htpasswd
+Require valid-user</pre></li></ol>
+<p>Sin credenciales el servidor responde <b>401 Unauthorized</b>. Basic envía la contraseña en Base64 (no cifrada), por eso conviene usarlo sobre HTTPS.</p>
+<h3>Hardening (bastionado)</h3>
+<p>Consiste en no regalar información a los atacantes. Se edita <code>/etc/apache2/conf-available/security.conf</code>:</p>
+<div class="tbl"><table><tr><th>Directiva</th><th>Por defecto</th><th>Recomendado</th><th>Efecto</th></tr>
+<tr><td>ServerTokens</td><td>Full</td><td><b>Prod</b></td><td>Solo muestra «Apache», sin versión ni SO</td></tr>
+<tr><td>ServerSignature</td><td>On</td><td><b>Off</b></td><td>Quita el pie con datos del servidor en páginas de error</td></tr>
+<tr><td>Options</td><td>Indexes FollowSymLinks</td><td><b>-Indexes</b></td><td>No lista archivos si falta index.html</td></tr>
+<tr><td>TraceEnable</td><td>On</td><td><b>Off</b></td><td>Desactiva TRACE (evita Cross-Site Tracing, XST)</td></tr></table></div>
+<h3>Cómo se comprueba (<code>curl -I</code>)</h3>
+<ul><li><code>curl -I http://sitio</code> → cabecera <code>Server: Apache</code> sin versiones.</li><li><code>curl -X TRACE -I http://sitio</code> → <b>405 Method Not Allowed</b>.</li><li><code>curl -I http://sitio/admin/</code> → <b>401 Unauthorized</b>.</li><li><code>curl -I http://sitio/viejo</code> → <b>301 Moved Permanently</b> hacia <code>/nuevo/</code>.</li></ul>
+<p>Redirección con mod_rewrite en <code>.htaccess</code>:</p>
+<pre>RewriteEngine On
+RewriteRule ^viejo/?$ /nuevo/ [R=301,L]</pre>
+<p><code>R=301</code> = redirección permanente, <code>L</code> = última regla.</p>
+
+<h2 id="t3">3. HTTPS, TLS y certificados</h2>
+<p><b>El problema:</b> por HTTP (puerto 80) todo viaja en texto plano. Con <code>tshark</code>/Wireshark/tcpdump un atacante en la misma red lee <code>usuario=admin&amp;password=secreto123</code> (sniffing). HTTPS (puerto <b>443</b>) cifra el tráfico con TLS.</p>
+<h3>PKI y certificados</h3>
+<p>El servidor presenta un certificado <b>X.509</b> firmado por una <b>CA</b> (Autoridad de Certificación). Si el navegador confía en esa CA, no hay avisos.</p>
+<ul><li><b>Autofirmado</b> (lo creas tú con OpenSSL): el navegador avisa porque no hay CA reconocida. Vale para desarrollo y pruebas. El error «self-signed certificate» no es un fallo de Apache ni de TLS.</li><li><b>De una CA</b> (Let's Encrypt, DigiCert): válido sin advertencias.</li></ul>
+<h3>OpenSSL: certificado autofirmado</h3>
+<pre>sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+ -keyout apache-selfsigned.key -out apache-selfsigned.crt \
+ -subj "/C=ES/ST=Madrid/O=Empresa/CN=localhost"</pre>
+<p><code>-x509</code> = certificado autofirmado; <code>-nodes</code> = clave privada sin contraseña (Apache arranca sin pedirla); <code>-days 365</code> = un año; <code>rsa:2048</code> = clave RSA de 2048 bits.</p>
+<h3>VirtualHost HTTPS (puerto 443)</h3>
+<pre>&lt;VirtualHost *:443&gt;
+ SSLEngine on
+ SSLCertificateFile    /etc/letsencrypt/live/dominio/fullchain.pem
+ SSLCertificateKeyFile /etc/letsencrypt/live/dominio/privkey.pem
+ SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1 +TLSv1.2 +TLSv1.3
+ SSLCipherSuite HIGH:!aNULL:!MD5:!3DES
+&lt;/VirtualHost&gt;
+&lt;VirtualHost *:80&gt;
+ Redirect permanent / https://dominio/
+&lt;/VirtualHost&gt;</pre>
+<p>Se desactivan los protocolos obsoletos (SSLv3, TLS 1.0, TLS 1.1) y se dejan <b>TLS 1.2 y 1.3</b>. <code>privkey.pem</code> es la clave privada (nunca se comparte); <code>fullchain.pem</code> es el certificado más la cadena de la CA. Activar: <code>a2enmod ssl headers</code>, <code>a2ensite default-ssl</code>, <code>configtest</code>, <code>reload</code>. Verificar: <code>curl -Iv https://localhost/</code> (con <code>-k</code> acepta autofirmados).</p>
+<h3>Let's Encrypt y Certbot</h3>
+<ul><li>CA gratuita que usa el protocolo <b>ACME</b>; <b>Certbot</b> es el cliente que valida y renueva.</li><li>Instalación: <code>apt install certbot python3-certbot-apache</code>. Uso: <code>sudo certbot --apache -d midominio.com -d www.midominio.com</code>.</li><li><b>HTTP-01</b>: Certbot deja un archivo en <code>/.well-known/acme-challenge/</code> y Let's Encrypt lo pide por el <b>puerto 80</b>.</li><li><b>DNS-01</b>: se crea un registro <b>TXT</b> en el DNS. Obligatorio para certificados <b>wildcard</b> (<code>*.empresa.com</code>).</li><li>Requiere dominio público y puertos 80/443 abiertos. Por eso en un laboratorio local se usa autofirmado.</li></ul>
+<h3>Cabeceras de seguridad (con mod_headers)</h3>
+<div class="tbl"><table><tr><th>Cabecera</th><th>Protege de / hace</th></tr>
+<tr><td>Strict-Transport-Security (HSTS)</td><td>Obliga al navegador a usar solo HTTPS (ej. <code>max-age=31536000</code>)</td></tr>
+<tr><td>X-Frame-Options SAMEORIGIN</td><td>Clickjacking: impide incrustar la web en iframes externos</td></tr>
+<tr><td>X-Content-Type-Options nosniff</td><td>Evita que el navegador adivine tipos MIME</td></tr>
+<tr><td>Content-Security-Policy (CSP)</td><td>Limita desde dónde se cargan scripts, estilos e imágenes</td></tr></table></div>
+<p>Fallos típicos en una auditoría: HTTP sin cifrar, sin redirección a HTTPS, certificado caducado o autofirmado, TLS 1.0/1.1 o SSLv3, cifrados débiles, cadena de confianza rota, claves privadas mal guardadas.</p>
+
+<h2 id="t4">4. Docker, proxy inverso y AWS EC2</h2>
+<ul><li><b>Proxy inverso con SSL Termination:</b> Nginx/Apache delante descifra el HTTPS y reenvía en claro, por la red interna de Docker, al contenedor de la app (Flask, Node, Django).</li><li>En <code>docker-compose.yml</code>: el proxy publica <code>ports: "80:80","443:443"</code>; el backend usa <code>expose: "5000"</code> (puerto solo interno); <code>depends_on</code> marca el orden de arranque; los <code>volumes</code> comparten certificados.</li><li><b>Security Group</b> (cortafuegos de AWS): abrir solo <b>22</b> (SSH, idealmente solo tu IP), <b>80</b> y <b>443</b>.</li><li><b>User Data:</b> script que se ejecuta una vez al arrancar la instancia; instala y configura todo sin entrar por SSH.</li><li>Conexión: <code>chmod 400 clave.pem</code> y <code>ssh -i clave.pem ubuntu@IP_PUBLICA</code>.</li></ul>
+
+<h2 id="t5">5. Logs, GoAccess y Fail2ban</h2>
+<h3>Logs de Apache</h3>
+<ul><li><b>AccessLog</b>: cada petición. Formato <i>combined</i>: IP, fecha/hora, método, URI, código de estado (200, 404, 500), tamaño, Referer y User-Agent.</li><li><b>ErrorLog</b>: fallos y avisos; el detalle se regula con <code>LogLevel</code> (debug, info, warn, error, crit).</li><li><b>logrotate</b> rota y comprime los logs de <code>/var/log/apache2/</code> para no llenar el disco.</li></ul>
+<h3>GoAccess (monitorizar)</h3>
+<p>Analiza el <code>access.log</code> y lo muestra como panel con estadísticas (hosts más activos, URLs, códigos de respuesta, tráfico), mucho más legible que leer el log a mano.</p>
+<pre>goaccess /var/log/apache2/access.log --log-format=COMBINED
+goaccess access.log --log-format=COMBINED -o /var/www/html/monitor.html --real-time-html</pre>
+<p><code>-o</code> = informe HTML de salida; <code>--real-time-html</code> = se actualiza en vivo. Se protege con <code>&lt;Location "/monitor.html"&gt;</code> + autenticación Basic, y se deja como servicio de systemd (<code>goaccess.service</code>, <code>Restart=always</code>, <code>systemctl enable/start</code>). Es normal ver IPs de bots y escáneres de Internet.</p>
+<h3>Fail2ban (prevenir)</h3>
+<p>Lee los logs, detecta patrones sospechosos (fuerza bruta, escaneos con muchos 404) y bloquea la IP añadiendo reglas a <code>iptables</code>/<code>nftables</code>. Se configura en <code>/etc/fail2ban/jail.local</code>:</p>
+<pre>[apache-404]
+enabled = true
+filter = apache-404
+logpath = /var/log/apache2/access.log
+maxretry = 10   # fallos permitidos
+findtime = 300  # ventana de tiempo (s)
+bantime  = 600  # duración del bloqueo (s)</pre>
+<ul><li>El <b>filter</b> (<code>/etc/fail2ban/filter.d/</code>) define con <code>failregex</code> qué línea cuenta como fallo; <code>&lt;HOST&gt;</code> es la IP.</li><li>Comprobar: <code>fail2ban-client status</code> y <code>fail2ban-client status apache-404</code> (muestra «Banned IP list»); también <code>/var/log/fail2ban.log</code> y <code>iptables -L -n</code>.</li><li>Simular ataque: <code>for i in {1..20}; do curl http://IP/noexiste$i; done</code> (genera errores <b>404</b>).</li><li><b>Monitorización ≠ prevención:</b> GoAccess observa, Fail2ban actúa. Un <b>ataque de fuerza bruta</b> prueba muchas combinaciones hasta acertar. Con <code>maxretry=1</code> se bloquearía a la primera falta (riesgo de falsos positivos).</li><li><b>Limitación:</b> un ataque distribuido desde muchas IPs, con pocas peticiones cada una, esquiva el bloqueo por IP. Otras medidas: WAF (mod_security), limitar peticiones, CDN, claves SSH en vez de contraseñas.</li><li>También protege SSH, FTP, correo, etc.</li></ul>
+
+<h2 id="t6">6. Proxy inverso Nginx con SSL en AWS EC2 y Docker Compose</h2>
+<p>Es el ejercicio de entrega de la unidad. Reúne todo lo anterior: Nginx, HTTPS, Docker y AWS.</p>
+<h3>Conceptos</h3>
+<ul><li><b>Nginx</b>: servidor web muy usado en producción. Puede actuar como <b>proxy inverso</b>, <b>balanceador de carga</b>, <b>terminador SSL/TLS</b> y servidor de <b>contenido estático</b>. Se usa mucho para publicar apps Flask, Node.js o Django.</li><li><b>Proxy inverso</b>: servidor que recibe las peticiones de los usuarios y las reenvía a uno o varios servidores internos. Ventaja principal: <b>los usuarios nunca acceden directamente a la aplicación</b>. Es como la recepción de un edificio: el visitante habla con recepción y nunca entra en los despachos.</li><li><b>Terminación SSL</b>: Nginx recibe el HTTPS, lo descifra y reenvía el tráfico en HTTP por la red interna.</li></ul>
+<h3>Arquitectura</h3>
+<pre>Usuario → Internet → HTTPS (443) → EC2 Ubuntu (puertos 22, 80, 443)
+   └─ Docker Compose (red Docker privada)
+        Nginx (proxy inverso, certificado SSL)  → HTTP interno →  Flask (no expuesto a Internet)</pre>
+<p><b>Ventajas:</b> Nginx gestiona HTTPS y recibe todas las peticiones externas; Flask queda aislado en una red interna; menor superficie de ataque; la gestión de certificados SSL se centraliza en un solo sitio.</p>
+<h3>Qué hay que hacer (7 tareas)</h3>
+<ol><li><b>EC2</b> Ubuntu con Security Group que permita TCP <b>22</b> (SSH), <b>80</b> (HTTP) y <b>443</b> (HTTPS).</li><li><b><code>user-data.sh</code></b>: se ejecuta en el primer arranque e instala <b>Docker Engine</b> y <b>Docker Compose</b>. No se permite instalar a mano después.</li><li><b>App Flask</b> sencilla; la página principal muestra nombre y apellidos, centro-ciclo-grupo y fecha de despliegue.</li><li><b><code>docker-compose.yml</code></b>: contenedor <b>Nginx</b> (puertos 80 y 443, HTTPS, proxy inverso) y contenedor <b>Flask</b> (ejecuta la app, no accesible desde Internet), unidos por una <b>red privada Docker</b>.</li><li><b>Terminación SSL</b> en Nginx: recibe HTTPS, gestiona el certificado, descifra TLS y reenvía a Flask.</li><li><b>Redirección</b> de todo HTTP a HTTPS.</li><li><b>Comprobar</b> en el navegador con <code>https://IP_PUBLICA</code> (o <code>https://DOMINIO</code>).</li></ol>
+<div class="box tip"><b>Ejemplo orientativo</b> (no viene en el PDF, sirve para entender la idea) de configuración de Nginx:
+<pre>server { listen 80; return 301 https://$host$request_uri; }
+server {
+  listen 443 ssl;
+  ssl_certificate     /etc/nginx/certs/cert.pem;
+  ssl_certificate_key /etc/nginx/certs/key.pem;
+  ssl_protocols TLSv1.2 TLSv1.3;
+  location / { proxy_pass http://flask:5000; }
+}</pre>
+<code>proxy_pass</code> apunta al nombre del servicio Flask dentro de la red Docker.</div>
+<h3>Cómo se comprueba cada criterio</h3>
+<div class="tbl"><table><tr><th>Criterio</th><th>Comando</th><th>Resultado esperado</th></tr>
+<tr><td>HTTPS operativo (2 pts)</td><td><code>curl -k -I https://IP</code></td><td><code>HTTP/1.1 200 OK</code> (<code>-k</code> acepta el certificado autofirmado)</td></tr>
+<tr><td>Redirección HTTP→HTTPS (1)</td><td><code>curl -I http://IP</code></td><td><b>301 Moved Permanently</b> o <b>302 Found</b></td></tr>
+<tr><td>TLS 1.0 deshabilitado (1)</td><td><code>openssl s_client -connect IP:443 -tls1</code></td><td>La conexión <b>debe fallar</b></td></tr>
+<tr><td>TLS 1.2 o superior (1)</td><td><code>openssl s_client -connect IP:443 -tls1_2</code></td><td>La conexión se <b>completa</b></td></tr>
+<tr><td>Flask vía proxy (1)</td><td>Navegador en <code>https://IP</code></td><td>Se ve la información identificativa del alumno</td></tr></table></div>
+<h3>Entrega y evaluación</h3>
+<ul><li><b>Repositorio GitHub privado</b> con <code>user-data.sh</code>, <code>docker-compose.yml</code>, configuración de Nginx, código de Flask y un README.</li><li><b>Vídeo</b> de menos de 1 minuto con la configuración y la web en el navegador.</li><li><b>PDF</b> con capturas de la configuración y de las comprobaciones.</li><li><b>Rúbrica:</b> PDF con configuración y 5 comprobaciones = 5 pts; Git con README = 2; vídeo = 2; bonus = 1.</li><li><b>Bonus (+1):</b> dominio propio y certificado válido de <b>Let's Encrypt</b>; evidencia con <code>curl -Iv https://midominio.com</code> sin advertencias ni errores.</li><li>La corrección se hace sobre el servicio desplegado: hay que registrar la IP pública y <b>mantener la instancia activa</b> durante la corrección.</li></ul>
+
+<h2 id="test">Test 1: 40 preguntas</h2>
+<p>Elige una opción por pregunta y pulsa «Corregir». Las explicaciones están en el apartado de soluciones.</p>
+<div id="quiz"></div>
+<button id="btn">Corregir</button><div id="res" role="status"></div>
+
+<h2 id="test2">Test 2: proxy inverso Nginx (12 preguntas)</h2>
+<div id="quiz2"></div>
+<button id="btn2">Corregir</button><div id="res2" role="status"></div>
+
+<h2 id="sol">Soluciones</h2>
+<h3>Test 1</h3>
+<ol class="sol" id="solist"></ol>
+<h3>Test 2</h3>
+<ol class="sol" id="solist2"></ol>
+</main>
+<script>
+// [pregunta, correcta, distractor1, distractor2, distractor3, explicación]
+const Q=[
+["¿Qué MPM de Apache crea un proceso por petición, sin hilos, y es compatible con PHP tradicional?","Prefork","Worker","Event","Cache","Prefork usa procesos independientes; es estable con librerías no thread-safe pero gasta más RAM."],
+["¿Qué MPM se recomienda hoy en producción y está optimizado para Keep-Alive?","Event","Prefork","Worker","Static","Event delega las conexiones inactivas a un hilo dedicado."],
+["¿Qué comando activa un módulo en Apache sobre Debian/Ubuntu?","a2enmod","a2ensite","apt enable","systemctl mod","a2enmod crea el enlace en mods-enabled; a2ensite es para sitios."],
+["¿Qué módulo permite URLs amigables y redirecciones con expresiones regulares?","mod_rewrite","mod_deflate","mod_headers","mod_proxy","mod_rewrite reescribe URLs."],
+["¿Qué módulo comprime contenido con Gzip?","mod_deflate","mod_rewrite","mod_security","mod_ssl","mod_deflate reduce el ancho de banda."],
+["¿Qué módulo permite a Apache actuar como proxy inverso?","mod_proxy","mod_deflate","mod_rewrite","mod_auth","mod_proxy / mod_proxy_http reenvían a Flask, Node, Tomcat o Docker."],
+["¿Qué módulo actúa como WAF frente a inyección SQL y XSS?","mod_security","mod_headers","mod_ssl","mod_proxy","mod_security inspecciona el tráfico en busca de ataques."],
+["¿Qué hace KeepAliveTimeout 5?","Espera 5 segundos una nueva petición antes de cerrar la conexión persistente","Limita a 5 las peticiones por conexión","Cierra el servidor a los 5 minutos","Reintenta 5 veces la conexión","Es el tiempo de espera en una conexión Keep-Alive; el límite de peticiones es MaxKeepAliveRequests."],
+["¿En qué orden se procesan las directivas?","Directory → Location → .htaccess","htaccess → Location → Directory","Location → Directory → htaccess","Todas a la vez","Directory (ruta corta a larga), luego Location, luego .htaccess si AllowOverride lo permite."],
+["¿Qué directiva permite el acceso solo a la red 192.168.1.0/24 en Apache 2.4?","Require ip 192.168.1.0/24","Allow from 192.168.1.0/24","AllowOverride 192.168.1.0/24","Listen 192.168.1.0/24","En 2.4 se usa Require con mod_authz_core."],
+["¿Con qué comando se crea el fichero de contraseñas para autenticación Basic?","htpasswd -c","passwd -a","a2enuser","openssl passwd -f","htpasswd -c crea el fichero; sin -c se añaden usuarios."],
+["Un jail tiene maxretry=3, findtime=600 y bantime=3600. ¿Qué significa?","3 fallos en 10 minutos provocan un bloqueo de 1 hora","3 fallos en 1 hora provocan un bloqueo de 10 minutos","3 IPs bloqueadas durante 600 s","3 reintentos de login cada 3600 s","maxretry = fallos, findtime = ventana, bantime = duración del bloqueo, todo en segundos."],
+["¿Qué valor de ServerTokens se recomienda para el bastionado?","Prod","Full","OS","Minimal","Prod devuelve solo «Apache», sin versión ni sistema."],
+["¿Qué previene deshabilitar el método TRACE (TraceEnable Off)?","Cross-Site Tracing (XST)","Inyección SQL","Fuerza bruta","Clickjacking","TRACE puede usarse en ataques XST."],
+["¿Qué efecto tiene Options -Indexes?","No se muestra el listado de archivos si falta index.html","Desactiva los enlaces simbólicos","Oculta la versión de Apache","Desactiva el .htaccess","Evita exponer el contenido de los directorios."],
+["¿Qué código devuelve curl -X TRACE si TRACE está deshabilitado?","405 Method Not Allowed","200 OK","301 Moved Permanently","404 Not Found","405 indica que el método no está permitido."],
+["Se accede a una carpeta protegida con Basic Auth sin credenciales. ¿Qué responde Apache?","401 Unauthorized","403 Forbidden","301","500","401 pide credenciales; 403 sería un acceso denegado sin posibilidad de autenticarse."],
+["¿Qué regla redirige /viejo a /nuevo/ de forma permanente?","RewriteRule ^viejo/?$ /nuevo/ [R=301,L]","Redirect 404 /viejo /nuevo","RewriteRule ^viejo /nuevo [F]","RewriteCond viejo nuevo","R=301 redirección permanente; L última regla."],
+["¿Para qué se añade «127.0.0.1 seguro.empresa.local» en /etc/hosts?","Para resolver el nombre del VirtualHost en local, sin DNS","Para habilitar el sitio en Apache","Para abrir el puerto 80","Para crear el certificado","Es una resolución de nombres local para pruebas."],
+["¿Qué comando valida la sintaxis de la configuración de Apache?","apache2ctl configtest","apache2ctl reload","a2ensite -t","systemctl check apache2","configtest (o apachectl configtest) comprueba la sintaxis antes de recargar."],
+["¿Por qué un certificado autofirmado muestra una advertencia en el navegador?","No está firmado por una CA reconocida","Usa HTTP en vez de HTTPS","La clave es demasiado larga","Apache tiene un error de TLS","No hay cadena de confianza; no es un fallo de Apache."],
+["¿Qué hace la opción -nodes de openssl req?","No cifra la clave privada, para que Apache arranque sin pedir contraseña","Crea un certificado sin dominio","Desactiva el nodo raíz","Genera la clave en DNS","nodes = «no DES»: la clave queda sin passphrase."],
+["¿Qué genera openssl req -x509 -nodes -days 365 -newkey rsa:2048?","Un certificado autofirmado válido 1 año con clave RSA de 2048 bits","Un certificado de CA válido 365 meses","Una clave AES de 365 bits","Un CSR para Let's Encrypt","-x509 autofirma, -days fija la validez, rsa:2048 el tamaño de clave."],
+["¿Qué protocolos se desactivan en el bastionado?","SSLv3, TLS 1.0 y TLS 1.1","TLS 1.2 y TLS 1.3","Solo TLS 1.3","HTTP/2","Quedan solo TLS 1.2 y 1.3."],
+["¿Qué puerto usa HTTPS por defecto?","443","80","22","8080","80 es HTTP; 22, SSH."],
+["¿Qué código usa Redirect permanent para pasar de HTTP a HTTPS?","301","200","302","404","Permanent = 301 (302 es temporal)."],
+["¿Qué protocolo usa Let's Encrypt para automatizar certificados?","ACME","SMTP","SNMP","SCP","ACME = Automated Certificate Management Environment."],
+["En el desafío HTTP-01, ¿qué comprueba Let's Encrypt y por qué puerto?","Un archivo en /.well-known/acme-challenge/ por el puerto 80","Un registro TXT por el puerto 53","Un fichero .pem por el puerto 443","Una clave SSH por el puerto 22","HTTP-01 va por el 80; el registro TXT es DNS-01."],
+["¿Qué desafío es obligatorio para un certificado wildcard (*.empresa.com)?","DNS-01 (registro TXT)","HTTP-01","SSH-01","Ninguno","Los wildcard exigen validar por DNS."],
+["¿Por qué no se usó Let's Encrypt en el laboratorio local?","No hay un dominio público accesible desde Internet","Let's Encrypt no soporta Apache","Cuesta dinero","No admite TLS 1.2","La validación necesita dominio público y puertos 80/443 accesibles."],
+["¿Qué hace la cabecera HSTS?","Obliga al navegador a usar solo HTTPS durante un tiempo","Impide el uso de iframes","Comprime las respuestas","Bloquea la IP atacante","X-Frame-Options es lo que protege del clickjacking."],
+["¿De qué protege X-Frame-Options SAMEORIGIN?","Clickjacking","Sniffing","Inyección SQL","Fuerza bruta","Impide incrustar la web en iframes de otros orígenes."],
+["¿Qué pasa con usuario y contraseña de un login enviado por HTTP?","Viajan en texto plano y se pueden capturar con tshark o Wireshark","Van cifrados con TLS","Se cifran con Base64 y son ilegibles","Solo los ve el servidor","Sin HTTPS cualquiera en la red puede leerlos."],
+["¿Qué es el SSL Termination en un proxy inverso?","El proxy descifra el HTTPS y reenvía por la red interna al contenedor","El contenedor descifra el tráfico","El certificado se elimina","Se cierra la conexión SSL","El HTTPS termina en el proxy y el backend recibe el tráfico por la red interna."],
+["¿Qué puertos se abren en el Security Group de la práctica en AWS?","22, 80 y 443","21, 25 y 3306","8080 y 5000","Todos","SSH (22), HTTP (80) y HTTPS (443)."],
+["¿Qué es el User Data de una instancia EC2?","Un script que se ejecuta al arrancar y automatiza la instalación","Los usuarios IAM de la cuenta","La clave .pem","El Security Group","Permite instalar y configurar sin entrar por SSH."],
+["¿Qué datos registra el formato combined del AccessLog?","IP, fecha, método, URI, estado, tamaño, Referer y User-Agent","Solo IP y fecha","Errores de compilación","Solo códigos 404","Los errores van al ErrorLog."],
+["¿Qué hace goaccess ... -o monitor.html --real-time-html?","Genera un panel HTML que se actualiza en tiempo real","Bloquea IPs sospechosas","Rota los logs","Comprime el access.log","GoAccess monitoriza; no bloquea."],
+["¿Qué hace Fail2ban cuando detecta un patrón sospechoso en los logs?","Añade reglas en iptables/nftables para bloquear la IP un tiempo","Apaga Apache","Borra el access.log","Cifra el tráfico","Es prevención de intrusiones: actúa sobre el cortafuegos."],
+["¿Para qué sirve logrotate en un servidor Apache?","Para rotar y comprimir los logs y evitar que llenen el disco","Para bloquear IPs atacantes","Para cifrar los logs con TLS","Para analizar el tráfico en tiempo real","Actúa sobre los ficheros de /var/log/apache2/."]
+];
+const Q2=[
+["¿Qué hace un proxy inverso?","Recibe las peticiones de los usuarios y las reenvía a servidores internos","Oculta la IP del usuario al navegar","Guarda copias de seguridad de la web","Cifra los discos del servidor","Los usuarios nunca acceden directamente a la aplicación."],
+["¿Cuál de estas funciones NO es propia de Nginx en esta arquitectura?","Ejecutar el código Python de la aplicación","Terminar SSL/TLS","Redirigir HTTP a HTTPS","Reenviar tráfico al backend","La app la ejecuta Flask; Nginx solo hace de proxy y gestiona HTTPS."],
+["¿Por qué Flask no debe ser accesible desde Internet?","Reduce la superficie de ataque: solo el proxy está expuesto","Porque Flask no soporta HTTP","Para que no consuma RAM","Porque Docker lo prohíbe","Todo el tráfico externo pasa por Nginx."],
+["¿Qué puertos debe permitir el Security Group del ejercicio?","TCP 22, 80 y 443","TCP 80 y 5000","TCP 22 y 3306","Todos los puertos","SSH, HTTP y HTTPS."],
+["¿Cómo viaja el tráfico entre Nginx y Flask?","En HTTP, por la red privada de Docker","En HTTPS con el mismo certificado","Por Internet con SSH","Por UDP","Es la terminación SSL: el cifrado acaba en Nginx."],
+["¿Qué debe hacer el script user-data.sh?","Instalar Docker Engine y Docker Compose en el primer arranque","Crear la instancia EC2","Generar el PDF de entrega","Instalar Docker a mano por SSH","Se prohíbe la instalación manual posterior."],
+["¿Qué resultado se espera de curl -k -I https://IP?","HTTP/1.1 200 OK","301 Moved Permanently","Connection refused","401 Unauthorized","La opción -k acepta el certificado autofirmado."],
+["¿Qué respuesta se espera de curl -I http://IP?","301 Moved Permanently o 302 Found","200 OK","404 Not Found","405 Method Not Allowed","Es la redirección de HTTP a HTTPS."],
+["¿Qué debe ocurrir con openssl s_client -connect IP:443 -tls1?","La conexión debe fallar","La conexión debe completarse","Devuelve 301","Devuelve el certificado de Let's Encrypt","TLS 1.0 debe estar deshabilitado."],
+["¿Qué debe ocurrir con openssl s_client -connect IP:443 -tls1_2?","La conexión se completa correctamente","La conexión debe fallar","Redirige a HTTP","Pide usuario y contraseña","TLS 1.2 o superior debe estar habilitado."],
+["¿En qué consiste el bonus de +1 punto?","Dominio propio con certificado válido de Let's Encrypt, comprobado con curl -Iv","Usar un certificado autofirmado de 4096 bits","Añadir Fail2ban","Usar tres contenedores","La evidencia no debe mostrar advertencias ni errores de validación."],
+["¿Qué requisitos de entrega son correctos?","Repositorio GitHub privado, vídeo de menos de 1 minuto y PDF con capturas","Solo el PDF","Vídeo de 10 minutos sin Git","Repositorio público sin README","Además la instancia debe seguir activa durante la corrección."]
+];
+const L="ABCD";
+function mk(Q,qe,be,re,se,pf,off){
+  const ans=[];
+  Q.forEach((q,i)=>{
+    const pos=(i*3+off)%4,o=q.slice(2,5);o.splice(pos,0,q[1]);ans.push(pos);
+    const d=document.createElement("div");d.className="q";
+    d.innerHTML=`<p>${i+1}. ${q[0]}</p>`+o.map((t,k)=>`<label><input type="radio" name="${pf}${i}" value="${k}"> ${L[k]}) ${t}</label>`).join("");
+    qe.appendChild(d);
+  });
+  se.innerHTML=Q.map((q,i)=>`<li><b>${i+1}. ${L[ans[i]]}) ${q[1]}.</b> ${q[5]}</li>`).join("");
+  be.onclick=()=>{
+    let ok=0;
+    Q.forEach((q,i)=>{
+      const labs=qe.children[i].querySelectorAll("label");
+      labs.forEach(l=>l.className="");
+      const sel=qe.querySelector(`input[name=${pf}${i}]:checked`);
+      labs[ans[i]].className="ok";
+      if(sel){if(+sel.value===ans[i])ok++;else labs[+sel.value].className="ko";}
+    });
+    re.textContent=`Resultado: ${ok} / ${Q.length}. Revisa las soluciones al final para las que fallaste.`;
+  };
+}
+const g=id=>document.getElementById(id);
+mk(Q,g("quiz"),g("btn"),g("res"),g("solist"),"a",1);
+mk(Q2,g("quiz2"),g("btn2"),g("res2"),g("solist2"),"b",2);
+</script></body></html>
